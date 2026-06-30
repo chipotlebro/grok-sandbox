@@ -12,7 +12,7 @@
         .message { margin: 15px 0; padding: 16px 22px; border-radius: 22px; max-width: 85%; font-size: 1.2em; line-height: 1.45; }
         .user { background: #4a90e2; color: white; margin-left: auto; }
         .grok { background: #fff; border: 3px solid #ff69b4; margin-right: auto; }
-        button { padding: 18px 40px; background: #ff1493; color: white; border: none; font-size: 1.5em; cursor: pointer; border-radius: 50px; margin: 15px; width: 90%; }
+        button { padding: 18px 40px; background: #ff1493; color: white; border: none; font-size: 1.5em; cursor: pointer; border-radius: 50px; margin: 15px; }
         .status { text-align: center; color: white; font-weight: bold; padding: 12px; background: #ff1493; }
     </style>
 </head>
@@ -23,7 +23,7 @@
             <div class="message grok">Hi Bonnie! Press the button and talk to me ✨</div>
         </div>
         <div style="padding: 20px; text-align: center; background: white;">
-            <button id="talkButton">🎤 Start Talking to Me</button>
+            <button id="talkBtn">🎤 Start Talking to Me</button>
         </div>
         <div class="status" id="status">Press the button to start</div>
     </div>
@@ -42,6 +42,7 @@
             msg.textContent = text;
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return msg;
         }
 
         function speak(text) {
@@ -76,6 +77,11 @@
                     })
                 });
 
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error("API Error: " + err);
+                }
+
                 const data = await res.json();
                 const reply = data.choices[0].message.content;
                 thinking.remove();
@@ -83,9 +89,8 @@
                 speak(reply);
             } catch(e) {
                 if (thinking && thinking.parentNode) thinking.remove();
-                const errMsg = "Oopsie! Try again 🐻";
-                addMessage(errMsg, 'grok');
-                speak(errMsg);
+                addMessage("Error: " + e.message, 'grok');
+                console.error(e);
             }
         }
 
@@ -117,14 +122,20 @@
                 if (spoken.length > 3) sendMessage(spoken);
             };
 
-            continuousRecognition.onerror = () => { if (isContinuousOn) setTimeout(startContinuousListening, 1000); };
-            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuousListening, 700); };
+            continuousRecognition.onerror = (e) => {
+                console.log("Voice error:", e.error);
+                if (isContinuousOn) setTimeout(startContinuousListening, 1000);
+            };
+
+            continuousRecognition.onend = () => {
+                if (isContinuousOn) setTimeout(startContinuousListening, 700);
+            };
 
             continuousRecognition.start();
         }
 
-        // Make sure button works
-        document.getElementById('talkButton').addEventListener('click', toggleContinuous);
+        // Make button work reliably
+        document.getElementById('talkBtn').addEventListener('click', toggleContinuous);
     </script>
 </body>
 </html>
