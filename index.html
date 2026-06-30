@@ -8,48 +8,55 @@
         body { font-family: 'Comic Sans MS', cursive, sans-serif; background: linear-gradient(135deg, #ff9a9e, #fad0c4); margin: 0; padding: 20px; color: #333; }
         .chat-container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
         .header { background: #4a90e2; color: white; padding: 20px; text-align: center; font-size: 2.2em; }
-        .messages { height: 65vh; overflow-y: auto; padding: 20px; background: #f9f9f9; }
+        .messages { height: 60vh; overflow-y: auto; padding: 20px; background: #f9f9f9; }
         .message { margin: 15px 0; padding: 15px 20px; border-radius: 20px; max-width: 80%; font-size: 1.1em; line-height: 1.4; }
         .user { background: #4a90e2; color: white; margin-left: auto; border-bottom-right-radius: 5px; }
         .grok { background: #fff; border: 2px solid #ff6b6b; margin-right: auto; border-bottom-left-radius: 5px; }
         input { width: 100%; padding: 18px; border: none; font-size: 1.2em; box-sizing: border-box; }
-        button { padding: 18px 40px; background: #ff6b6b; color: white; border: none; font-size: 1.3em; cursor: pointer; border-radius: 10px; }
+        button { padding: 15px 25px; background: #ff6b6b; color: white; border: none; font-size: 1.2em; cursor: pointer; border-radius: 10px; margin: 5px; }
         .kid-safe { text-align: center; color: #666; padding: 15px; font-size: 0.95em; }
+        img { max-width: 100%; border-radius: 15px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to talk about today?</div>
+            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to talk about? Stories, dinosaurs, or should I draw you a picture? 🎨</div>
         </div>
-        <input type="text" id="userInput" placeholder="Ask me anything..." onkeypress="if(event.key === 'Enter') sendMessage()">
-        <div style="padding: 15px; text-align: center; background: white;">
-            <button onclick="sendMessage()">Send Message 🚀</button>
+        <input type="text" id="userInput" placeholder="Type or use the mic..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <div style="padding: 10px; text-align: center; background: white;">
+            <button onclick="sendMessage()">Send 🚀</button>
+            <button onclick="startVoice()">🎤 Talk</button>
         </div>
         <div class="kid-safe">Made with love for Bonnie • Supervised by Daddy</div>
     </div>
 
     <script>
         const GROQ_API_KEY = "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";
-
         const messagesDiv = document.getElementById('messages');
 
-        function addMessage(text, sender) {
+        function addMessage(text, sender, isImage = false) {
             const msg = document.createElement('div');
             msg.className = `message ${sender}`;
-            msg.textContent = text;
+            if (isImage) {
+                const img = document.createElement('img');
+                img.src = text;
+                msg.appendChild(img);
+            } else {
+                msg.textContent = text;
+            }
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             return msg;
         }
 
-        async function sendMessage() {
+        async function sendMessage(imagePrompt = null) {
             const input = document.getElementById('userInput');
-            const text = input.value.trim();
+            const text = imagePrompt || input.value.trim();
             if (!text) return;
 
-            addMessage(text, 'user');
+            if (!imagePrompt) addMessage(text, 'user');
             input.value = '';
 
             const thinking = addMessage("Thinking... 🤔", 'grok');
@@ -57,32 +64,45 @@
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${GROQ_API_KEY}`
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
-                        messages: [{ role: "user", content: text }]
+                        messages: [
+                            { role: "system", content: "You are a warm, playful, and safe best friend for 5-year-old Bonnie. Use very simple words, lots of emojis, be encouraging and fun. Keep answers short." },
+                            { role: "user", content: text }
+                        ],
+                        temperature: 0.9,
+                        max_tokens: 300
                     })
                 });
 
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error("API Error:", errorText);
-                    throw new Error("API Error: " + res.status);
-                }
-
                 const data = await res.json();
                 thinking.remove();
-                const reply = data.choices[0].message.content;
-                addMessage(reply, 'grok');
+                addMessage(data.choices[0].message.content, 'grok');
             } catch(e) {
                 thinking.remove();
-                console.error(e);
-                addMessage("Error: " + e.message, 'grok');
+                addMessage("Oopsie! Try again 🐻", 'grok');
             }
         }
+
+        // Voice Input
+        let recognition;
+        function startVoice() {
+            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
+                alert("Voice not supported on this browser. Try Chrome!");
+                return;
+            }
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.onresult = (event) => {
+                const spoken = event.results[0][0].transcript;
+                document.getElementById('userInput').value = spoken;
+                sendMessage(spoken);
+            };
+            recognition.start();
+        }
+
+        // Bonus: Ask for picture
+        // Example: User can type "draw me a unicorn"
     </script>
 </body>
 </html>
