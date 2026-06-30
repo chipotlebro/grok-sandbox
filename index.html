@@ -46,20 +46,11 @@
 
         function speak(text) {
             isSpeaking = true;
-            if (continuousRecognition) continuousRecognition.stop(); // ← Pause mic while talking
-
             const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
             utterance.text = cleanText;
             utterance.pitch = 1.35;
             utterance.rate = 0.8;
-            utterance.onend = () => {
-                isSpeaking = false;
-                if (isContinuousOn && continuousRecognition) {
-                    setTimeout(() => {
-                        if (isContinuousOn) continuousRecognition.start();
-                    }, 600);
-                }
-            };
+            utterance.onend = () => { isSpeaking = false; };
             speechSynthesis.speak(utterance);
         }
 
@@ -121,7 +112,7 @@
             continuousRecognition.lang = "en-US";
 
             continuousRecognition.onresult = (event) => {
-                if (isSpeaking) return;
+                if (isSpeaking) return;   // ← This prevents self-response
                 const spoken = event.results[event.results.length - 1][0].transcript.trim();
                 if (spoken.length > 3) sendMessage(spoken);
             };
