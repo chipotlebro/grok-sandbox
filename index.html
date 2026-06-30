@@ -9,7 +9,7 @@
         .chat-container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
         .header { background: #4a90e2; color: white; padding: 20px; text-align: center; font-size: 2.2em; }
         .messages { height: 65vh; overflow-y: auto; padding: 20px; background: #f9f9f9; }
-        .message { margin: 15px 0; padding: 15px 20px; border-radius: 20px; max-width: 80%; font-size: 1.1em; }
+        .message { margin: 15px 0; padding: 15px 20px; border-radius: 20px; max-width: 80%; font-size: 1.1em; line-height: 1.4; }
         .user { background: #4a90e2; color: white; margin-left: auto; border-bottom-right-radius: 5px; }
         .grok { background: #fff; border: 2px solid #ff6b6b; margin-right: auto; border-bottom-left-radius: 5px; }
         input { width: 100%; padding: 18px; border: none; font-size: 1.2em; box-sizing: border-box; }
@@ -21,9 +21,9 @@
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to do today? Stories, games, or learn about dinosaurs?</div>
+            <div class="message grok">Hi Bonnie! I'm your fun Grok buddy 🦄 What do you want to talk about today?</div>
         </div>
-        <input type="text" id="userInput" placeholder="Type here and press Send..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <input type="text" id="userInput" placeholder="Ask me anything..." onkeypress="if(event.key === 'Enter') sendMessage()">
         <div style="padding: 15px; text-align: center; background: white;">
             <button onclick="sendMessage()">Send Message 🚀</button>
         </div>
@@ -31,25 +31,56 @@
     </div>
 
     <script>
+        const messages = document.getElementById('messages');
+
         async function sendMessage() {
             const input = document.getElementById('userInput');
-            const messages = document.getElementById('messages');
             const text = input.value.trim();
             if (!text) return;
 
-            const userMsg = document.createElement('div');
-            userMsg.className = 'message user';
-            userMsg.textContent = text;
-            messages.appendChild(userMsg);
-            messages.scrollTop = messages.scrollHeight;
-
+            // Add user message
+            addMessage(text, 'user');
             input.value = '';
 
-            const grokMsg = document.createElement('div');
-            grokMsg.className = 'message grok';
-            grokMsg.textContent = "Yay! That's awesome, Bonnie! Let me think of a fun answer... ✨";
-            messages.appendChild(grokMsg);
+            // Show thinking
+            const thinking = addMessage("Thinking... 🤔", 'grok');
+
+            // Call Groq API (free & fast) - replace with your key later
+            try {
+                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer YOUR_GROQ_API_KEY_HERE'   // ← Change this
+                    },
+                    body: JSON.stringify({
+                        model: "llama3-8b-8192",
+                        messages: [
+                            {role: "system", content: "You are a very friendly, fun, and safe assistant for a 5-year-old girl named Bonnie. Use simple words, be encouraging, and keep answers short and exciting."},
+                            {role: "user", content: text}
+                        ],
+                        temperature: 0.8,
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await res.json();
+                const reply = data.choices[0].message.content;
+                thinking.remove();
+                addMessage(reply, 'grok');
+            } catch(e) {
+                thinking.remove();
+                addMessage("Oops! Having a little trouble thinking right now. Try again! 🐛", 'grok');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const msg = document.createElement('div');
+            msg.className = `message ${sender}`;
+            msg.textContent = text;
+            messages.appendChild(msg);
             messages.scrollTop = messages.scrollHeight;
+            return msg;
         }
     </script>
 </body>
