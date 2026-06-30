@@ -73,4 +73,59 @@
                         model: "llama-3.1-8b-instant",
                         messages: [
                             { role: "system", content: "You are a warm, playful friend for 5-year-old Bonnie. Use very simple words, be encouraging and fun. Keep answers short." },
-                            { role: "user", content: user
+                            { role: "user", content: userText }
+                        ],
+                        temperature: 0.9,
+                        max_tokens: 280
+                    })
+                });
+
+                const data = await res.json();
+                const reply = data.choices[0].message.content;
+                thinking.remove();
+                addMessage(reply, 'grok');
+                speak(reply);
+            } catch(e) {
+                if (thinking && thinking.parentNode) thinking.remove();
+                const errMsg = "Oopsie! Try again 🐻";
+                addMessage(errMsg, 'grok');
+                speak(errMsg);
+            }
+        }
+
+        function toggleContinuous() {
+            const status = document.getElementById('status');
+            if (isContinuousOn) {
+                if (continuousRecognition) continuousRecognition.stop();
+                isContinuousOn = false;
+                status.textContent = "Listening stopped";
+            } else {
+                startContinuousListening();
+                isContinuousOn = true;
+                status.textContent = "🎤 Listening... Talk anytime!";
+            }
+        }
+
+        function startContinuousListening() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("Voice not supported. Try Chrome.");
+
+            continuousRecognition = new SpeechRecognition();
+            continuousRecognition.continuous = true;
+            continuousRecognition.interimResults = false;
+            continuousRecognition.lang = "en-US";
+
+            continuousRecognition.onresult = (event) => {
+                if (isSpeaking) return;
+                const spoken = event.results[event.results.length - 1][0].transcript.trim();
+                if (spoken.length > 3) sendMessage(spoken);
+            };
+
+            continuousRecognition.onerror = () => { if (isContinuousOn) setTimeout(startContinuousListening, 1000); };
+            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuousListening, 700); };
+
+            continuousRecognition.start();
+        }
+    </script>
+</body>
+</html>
