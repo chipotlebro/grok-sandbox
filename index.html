@@ -28,24 +28,22 @@
             padding: 20px; 
         }
         .avatar { 
-            width: 85%; 
-            max-width: 420px; 
-            height: 85%; 
-            max-height: 420px; 
-            background: url('https://picsum.photos/id/1015/800/800') center/cover; 
+            width: 320px; 
+            height: 320px; 
+            background: url('https://i.imgur.com/0Z8vK8m.png') center/contain no-repeat; 
             border-radius: 50%; 
             box-shadow: 0 15px 40px rgba(0,0,0,0.3); 
             transition: transform 0.3s;
         }
         .talking { 
-            animation: talk 0.45s infinite alternate ease-in-out; 
+            animation: talk 0.4s infinite alternate ease-in-out; 
         }
         @keyframes talk { 
-            from { transform: scale(1) rotate(-4deg); } 
-            to { transform: scale(1.12) rotate(4deg); } 
+            from { transform: scale(1); } 
+            to { transform: scale(1.15); } 
         }
         .messages { 
-            max-height: 22vh; 
+            max-height: 25vh; 
             overflow-y: auto; 
             padding: 15px; 
             background: rgba(255,255,255,0.95); 
@@ -74,14 +72,14 @@
     </style>
 </head>
 <body>
-    <div class="header">Bonnie's Mermaid Friend 🧜‍♀️</div>
+    <div class="header">Bonnie's 8-Bit Mermaid Friend 🧜‍♀️</div>
     
     <div class="avatar-container">
         <div class="avatar" id="avatar"></div>
     </div>
 
     <div class="messages" id="messages">
-        <div class="message grok">Hi Bonnie! I'm your mermaid friend! Talk to me anytime ✨</div>
+        <div class="message grok">Hi Bonnie! I'm your 8-bit mermaid friend! Talk to me ✨</div>
     </div>
 
     <div style="padding: 15px; background: white;">
@@ -138,7 +136,7 @@
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
                         messages: [
-                            { role: "system", content: "You are a warm, playful mermaid friend for 5-year-old Bonnie. Use very simple words, be magical and fun. Keep answers short." },
+                            { role: "system", content: "You are a warm, playful 8-bit mermaid friend for 5-year-old Bonnie. Use very simple words, be fun and magical. Keep answers short." },
                             { role: "user", content: userText }
                         ],
                         temperature: 0.9,
