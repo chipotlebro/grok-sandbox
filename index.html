@@ -15,19 +15,18 @@
         input { width: 100%; padding: 18px; border: none; font-size: 1.2em; box-sizing: border-box; }
         button { padding: 15px 25px; background: #ff6b6b; color: white; border: none; font-size: 1.2em; cursor: pointer; border-radius: 10px; margin: 5px; }
         .kid-safe { text-align: center; color: #666; padding: 15px; font-size: 0.95em; }
-        img { max-width: 100%; border-radius: 15px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to talk about? Stories, dinosaurs, or should I draw you a picture? 🎨</div>
+            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to talk about today?</div>
         </div>
         <input type="text" id="userInput" placeholder="Type or use the mic..." onkeypress="if(event.key === 'Enter') sendMessage()">
         <div style="padding: 10px; text-align: center; background: white;">
             <button onclick="sendMessage()">Send 🚀</button>
-            <button onclick="startVoice()">🎤 Talk</button>
+            <button onclick="startVoiceInput()">🎤 Talk</button>
         </div>
         <div class="kid-safe">Made with love for Bonnie • Supervised by Daddy</div>
     </div>
@@ -35,28 +34,30 @@
     <script>
         const GROQ_API_KEY = "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";
         const messagesDiv = document.getElementById('messages');
+        const utterance = new SpeechSynthesisUtterance();
 
-        function addMessage(text, sender, isImage = false) {
+        function addMessage(text, sender) {
             const msg = document.createElement('div');
             msg.className = `message ${sender}`;
-            if (isImage) {
-                const img = document.createElement('img');
-                img.src = text;
-                msg.appendChild(img);
-            } else {
-                msg.textContent = text;
-            }
+            msg.textContent = text;
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
             return msg;
         }
 
-        async function sendMessage(imagePrompt = null) {
+        function speak(text) {
+            utterance.text = text;
+            utterance.pitch = 1.1;
+            utterance.rate = 0.95;
+            speechSynthesis.speak(utterance);
+        }
+
+        async function sendMessage() {
             const input = document.getElementById('userInput');
-            const text = imagePrompt || input.value.trim();
+            const text = input.value.trim();
             if (!text) return;
 
-            if (!imagePrompt) addMessage(text, 'user');
+            addMessage(text, 'user');
             input.value = '';
 
             const thinking = addMessage("Thinking... 🤔", 'grok');
@@ -77,32 +78,33 @@
                 });
 
                 const data = await res.json();
+                const reply = data.choices[0].message.content;
                 thinking.remove();
-                addMessage(data.choices[0].message.content, 'grok');
+                addMessage(reply, 'grok');
+                speak(reply);                    // ← Speaks the answer!
             } catch(e) {
                 thinking.remove();
-                addMessage("Oopsie! Try again 🐻", 'grok');
+                const errMsg = "Oopsie! Try again 🐻";
+                addMessage(errMsg, 'grok');
+                speak(errMsg);
             }
         }
 
         // Voice Input
-        let recognition;
-        function startVoice() {
-            if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-                alert("Voice not supported on this browser. Try Chrome!");
+        function startVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Voice input not supported in this browser. Try Chrome!");
                 return;
             }
-            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            const recognition = new SpeechRecognition();
             recognition.onresult = (event) => {
                 const spoken = event.results[0][0].transcript;
                 document.getElementById('userInput').value = spoken;
-                sendMessage(spoken);
+                sendMessage();
             };
             recognition.start();
         }
-
-        // Bonus: Ask for picture
-        // Example: User can type "draw me a unicorn"
     </script>
 </body>
 </html>
