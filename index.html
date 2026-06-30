@@ -42,16 +42,24 @@
             msg.textContent = text;
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            return msg;
         }
 
         function speak(text) {
             isSpeaking = true;
+            if (continuousRecognition) continuousRecognition.stop(); // ← Pause mic while talking
+
             const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
             utterance.text = cleanText;
             utterance.pitch = 1.35;
             utterance.rate = 0.8;
-            utterance.onend = () => { isSpeaking = false; };
+            utterance.onend = () => {
+                isSpeaking = false;
+                if (isContinuousOn && continuousRecognition) {
+                    setTimeout(() => {
+                        if (isContinuousOn) continuousRecognition.start();
+                    }, 600);
+                }
+            };
             speechSynthesis.speak(utterance);
         }
 
@@ -77,11 +85,6 @@
                     })
                 });
 
-                if (!res.ok) {
-                    const err = await res.text();
-                    throw new Error("API Error: " + err);
-                }
-
                 const data = await res.json();
                 const reply = data.choices[0].message.content;
                 thinking.remove();
@@ -89,8 +92,9 @@
                 speak(reply);
             } catch(e) {
                 if (thinking && thinking.parentNode) thinking.remove();
-                addMessage("Error: " + e.message, 'grok');
-                console.error(e);
+                const errMsg = "Oopsie! Try again 🐻";
+                addMessage(errMsg, 'grok');
+                speak(errMsg);
             }
         }
 
@@ -122,19 +126,12 @@
                 if (spoken.length > 3) sendMessage(spoken);
             };
 
-            continuousRecognition.onerror = (e) => {
-                console.log("Voice error:", e.error);
-                if (isContinuousOn) setTimeout(startContinuousListening, 1000);
-            };
-
-            continuousRecognition.onend = () => {
-                if (isContinuousOn) setTimeout(startContinuousListening, 700);
-            };
+            continuousRecognition.onerror = () => { if (isContinuousOn) setTimeout(startContinuousListening, 1000); };
+            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuousListening, 700); };
 
             continuousRecognition.start();
         }
 
-        // Make button work reliably
         document.getElementById('talkBtn').addEventListener('click', toggleContinuous);
     </script>
 </body>
