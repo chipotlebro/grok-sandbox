@@ -3,128 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bonnie's Grok Buddy</title>
+    <title>Bonnie's Grok Buddy - Debug</title>
     <style>
-        body { font-family: 'Comic Sans MS', cursive, sans-serif; background: #ff69b4; margin: 0; padding: 20px; color: #333; }
-        .chat-container { max-width: 800px; margin: 0 auto; background: white; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
-        .header { background: #4a90e2; color: white; padding: 20px; font-size: 2.3em; text-align: center; }
-        .messages { height: 65vh; overflow-y: auto; padding: 20px; background: #fff9f9; }
-        .message { margin: 15px 0; padding: 16px 22px; border-radius: 22px; max-width: 85%; font-size: 1.2em; line-height: 1.45; }
-        .user { background: #4a90e2; color: white; margin-left: auto; }
-        .grok { background: #fff; border: 3px solid #ff69b4; margin-right: auto; }
-        button { padding: 18px 40px; background: #ff1493; color: white; border: none; font-size: 1.5em; cursor: pointer; border-radius: 50px; margin: 15px; }
-        .status { text-align: center; color: white; font-weight: bold; padding: 12px; background: #ff1493; }
+        body { font-family: Arial, sans-serif; background: #ff69b4; margin: 0; padding: 20px; }
+        .chat { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; padding: 20px; }
+        button { padding: 20px 40px; font-size: 1.6em; background: white; border: 4px solid #4a90e2; border-radius: 50px; }
+        pre { background: #f0f0f0; padding: 10px; overflow: auto; max-height: 300px; }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
-        <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! Talk to me! I'm listening ✨</div>
-        </div>
-        <div style="padding: 20px; text-align: center; background: white;">
-            <button onclick="toggleContinuous()">🎤 Start Talking to Me</button>
-        </div>
-        <div class="status" id="status">Press button to start</div>
+    <div class="chat">
+        <h1>Bonnie's Grok Buddy - Debug Mode</h1>
+        <button onclick="toggleContinuous()">🎤 Start Voice Chat</button>
+        <div id="status">Status: Ready</div>
+        <div id="output"></div>
+        <pre id="log"></pre>
     </div>
 
     <script>
         const GROQ_API_KEY = "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";
-        const messagesDiv = document.getElementById('messages');
-        const utterance = new SpeechSynthesisUtterance();
         let continuousRecognition = null;
         let isContinuousOn = false;
-        let isSpeaking = false;
 
-        function addMessage(text, sender) {
-            const msg = document.createElement('div');
-            msg.className = `message ${sender}`;
-            msg.textContent = text;
-            messagesDiv.appendChild(msg);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        function cleanForSpeech(text) {
-            return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
-        }
-
-        function speak(text) {
-            isSpeaking = true;
-            const cleanText = cleanForSpeech(text);
-            utterance.text = cleanText;
-            utterance.pitch = 1.35;
-            utterance.rate = 0.8;
-            utterance.onend = () => { isSpeaking = false; };
-            speechSynthesis.speak(utterance);
+        function log(msg) {
+            const logEl = document.getElementById('log');
+            logEl.textContent += msg + "\n";
+            console.log(msg);
         }
 
         async function sendMessage(userText) {
-            if (isSpeaking) return;
+            log("Sending: " + userText);
+            document.getElementById('output').innerHTML += `<p><b>You:</b> ${userText}</p>`;
 
-            addMessage(userText, 'user');
-
-            const thinking = addMessage("Thinking... 🤔", 'grok');
+            const thinking = document.getElementById('output');
+            thinking.innerHTML += `<p><b>Grok:</b> Thinking... </p>`;
 
             try {
+                log("Making API call...");
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
+                    headers: { 
+                        "Content-Type": "application/json", 
+                        "Authorization": `Bearer ${GROQ_API_KEY}` 
+                    },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
-                        messages: [
-                            { role: "system", content: "You are a warm, playful friend for 5-year-old Bonnie. Use very simple words, be encouraging and fun. Keep answers short." },
-                            { role: "user", content: userText }
-                        ],
-                        temperature: 0.9,
-                        max_tokens: 280
+                        messages: [{ role: "user", content: userText }],
+                        max_tokens: 150
                     })
                 });
 
+                log("Response status: " + res.status);
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    log("Error body: " + errorText);
+                    throw new Error("API Error " + res.status);
+                }
+
                 const data = await res.json();
                 const reply = data.choices[0].message.content;
-                thinking.remove();
-                addMessage(reply, 'grok');
-                speak(reply);
+                log("Success! Reply: " + reply);
+
+                document.getElementById('output').innerHTML += `<p><b>Grok:</b> ${reply}</p>`;
             } catch(e) {
-                thinking.remove();
-                const errMsg = "Oopsie! Try again 🐻";
-                addMessage(errMsg, 'grok');
-                speak(errMsg);
+                log("Catch error: " + e.message);
+                document.getElementById('output').innerHTML += `<p><b>Error:</b> ${e.message}</p>`;
             }
         }
 
         function toggleContinuous() {
-            const status = document.getElementById('status');
             if (isContinuousOn) {
                 if (continuousRecognition) continuousRecognition.stop();
                 isContinuousOn = false;
-                status.textContent = "Listening stopped";
+                document.getElementById('status').innerHTML = "Stopped";
             } else {
-                startContinuousListening();
+                startContinuous();
                 isContinuousOn = true;
-                status.textContent = "🎤 Listening... Talk anytime!";
+                document.getElementById('status').innerHTML = "Listening...";
             }
         }
 
-        function startContinuousListening() {
+        function startContinuous() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert("Voice not supported.");
+            if (!SpeechRecognition) {
+                alert("Voice not supported");
+                return;
+            }
 
             continuousRecognition = new SpeechRecognition();
             continuousRecognition.continuous = true;
             continuousRecognition.interimResults = false;
-            continuousRecognition.lang = "en-US";
 
             continuousRecognition.onresult = (event) => {
-                if (isSpeaking) return;
-                const spoken = event.results[event.results.length - 1][0].transcript.trim();
+                const spoken = event.results[event.results.length-1][0].transcript.trim();
                 if (spoken.length > 3) sendMessage(spoken);
             };
 
-            continuousRecognition.onerror = () => { if (isContinuousOn) setTimeout(startContinuousListening, 1000); };
-            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuousListening, 700); };
+            continuousRecognition.onerror = (e) => log("Voice error: " + e.error);
+            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuous, 800); };
 
             continuousRecognition.start();
+            log("Voice recognition started");
         }
     </script>
 </body>
