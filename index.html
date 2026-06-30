@@ -45,8 +45,14 @@
             return msg;
         }
 
+        // Remove emojis before speaking
+        function cleanForSpeech(text) {
+            return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+        }
+
         function speak(text) {
-            utterance.text = text;
+            const cleanText = cleanForSpeech(text);
+            utterance.text = cleanText;
             utterance.pitch = 1.1;
             utterance.rate = 0.95;
             speechSynthesis.speak(utterance);
@@ -69,7 +75,7 @@
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
                         messages: [
-                            { role: "system", content: "You are a warm, playful, and safe best friend for 5-year-old Bonnie. Use very simple words, lots of emojis, be encouraging and fun. Keep answers short." },
+                            { role: "system", content: "You are a warm, playful, and safe best friend for 5-year-old Bonnie. Use very simple words, be encouraging and fun. Keep answers short." },
                             { role: "user", content: text }
                         ],
                         temperature: 0.9,
@@ -81,7 +87,7 @@
                 const reply = data.choices[0].message.content;
                 thinking.remove();
                 addMessage(reply, 'grok');
-                speak(reply);                    // ← Speaks the answer!
+                speak(reply);   // Speaks without emojis
             } catch(e) {
                 thinking.remove();
                 const errMsg = "Oopsie! Try again 🐻";
@@ -94,7 +100,7 @@
         function startVoiceInput() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                alert("Voice input not supported in this browser. Try Chrome!");
+                alert("Voice input not supported. Try Chrome!");
                 return;
             }
             const recognition = new SpeechRecognition();
