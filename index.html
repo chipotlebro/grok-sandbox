@@ -21,7 +21,7 @@
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! I'm your fun Grok buddy 🦄 What do you want to talk about today?</div>
+            <div class="message grok">Hi Bonnie! I'm your real Grok buddy 🦄 What do you want to talk about today?</div>
         </div>
         <input type="text" id="userInput" placeholder="Ask me anything..." onkeypress="if(event.key === 'Enter') sendMessage()">
         <div style="padding: 15px; text-align: center; background: white;">
@@ -31,56 +31,58 @@
     </div>
 
     <script>
-        const messages = document.getElementById('messages');
+        const API_KEY = "xai-ycFl5LizvxdvIYy5KO7H18VpRlIrSZxZOx4mbi73wgfO09qXgHgJaFX68g67arbmhftTjNugPQN7BOj6"; // ← Your key
+
+        const messagesDiv = document.getElementById('messages');
+
+        function addMessage(text, sender) {
+            const msg = document.createElement('div');
+            msg.className = `message ${sender}`;
+            msg.textContent = text;
+            messagesDiv.appendChild(msg);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return msg;
+        }
 
         async function sendMessage() {
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text) return;
 
-            // Add user message
             addMessage(text, 'user');
             input.value = '';
 
-            // Show thinking
             const thinking = addMessage("Thinking... 🤔", 'grok');
 
-            // Call Groq API (free & fast) - replace with your key later
             try {
-                const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
+                const res = await fetch("https://api.x.ai/v1/chat/completions", {
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer YOUR_GROQ_API_KEY_HERE'   // ← Change this
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${API_KEY}`
                     },
                     body: JSON.stringify({
-                        model: "llama3-8b-8192",
+                        model: "grok-beta",
                         messages: [
-                            {role: "system", content: "You are a very friendly, fun, and safe assistant for a 5-year-old girl named Bonnie. Use simple words, be encouraging, and keep answers short and exciting."},
-                            {role: "user", content: text}
+                            { 
+                                role: "system", 
+                                content: "You are a warm, fun, and safe friend for a 5-year-old girl named Bonnie. Use very simple words, lots of emojis, be encouraging, and keep answers short and exciting. Never scary topics."
+                            },
+                            { role: "user", content: text }
                         ],
-                        temperature: 0.8,
-                        max_tokens: 300
+                        temperature: 0.85,
+                        max_tokens: 400
                     })
                 });
 
                 const data = await res.json();
-                const reply = data.choices[0].message.content;
                 thinking.remove();
+                const reply = data.choices[0].message.content;
                 addMessage(reply, 'grok');
             } catch(e) {
                 thinking.remove();
-                addMessage("Oops! Having a little trouble thinking right now. Try again! 🐛", 'grok');
+                addMessage("Oops! Grok is taking a quick nap 🐻 Try again in a moment!", 'grok');
             }
-        }
-
-        function addMessage(text, sender) {
-            const msg = document.createElement('div');
-            msg.className = `message ${sender}`;
-            msg.textContent = text;
-            messages.appendChild(msg);
-            messages.scrollTop = messages.scrollHeight;
-            return msg;
         }
     </script>
 </body>
