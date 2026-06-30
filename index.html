@@ -63,17 +63,15 @@
                     },
                     body: JSON.stringify({
                         model: "llama3-8b-8192",
-                        messages: [
-                            { 
-                                role: "system", 
-                                content: "You are a warm, fun, and safe friend for a 5-year-old girl named Bonnie. Use very simple words, lots of emojis, be encouraging, and keep answers short and exciting. Never scary topics."
-                            },
-                            { role: "user", content: text }
-                        ],
-                        temperature: 0.85,
-                        max_tokens: 400
+                        messages: [{ role: "user", content: text }]
                     })
                 });
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("API Error:", errorText);
+                    throw new Error("API Error: " + res.status);
+                }
 
                 const data = await res.json();
                 thinking.remove();
@@ -81,7 +79,8 @@
                 addMessage(reply, 'grok');
             } catch(e) {
                 thinking.remove();
-                addMessage("Oops! Having a little trouble. Try again! 🐻", 'grok');
+                console.error(e);
+                addMessage("Error: " + e.message, 'grok');
             }
         }
     </script>
