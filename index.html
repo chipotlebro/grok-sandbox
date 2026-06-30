@@ -41,6 +41,7 @@
             msg.textContent = text;
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return msg;
         }
 
         async function sendMessage(userText) {
@@ -79,7 +80,7 @@
                 speak(reply);
             } catch(e) {
                 console.error("Full error:", e);
-                thinking.remove();
+                if (thinking && thinking.parentNode) thinking.remove();
                 addMessage("Error: " + e.message, 'grok');
             }
         }
@@ -92,7 +93,6 @@
         }
 
         function toggleContinuous() {
-            // Simple version for debugging
             const spoken = prompt("Say something to Bonnie's friend:");
             if (spoken) sendMessage(spoken);
         }
