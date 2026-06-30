@@ -22,9 +22,9 @@
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! Talk to me anytime! I'm listening 🎤</div>
+            <div class="message grok">Hi Bonnie! Talk to me! I'm listening 🎤</div>
         </div>
-        <input type="text" id="userInput" placeholder="Type here if you want..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <input type="text" id="userInput" placeholder="Type here..." onkeypress="if(event.key === 'Enter') sendMessage()">
         <div style="padding: 10px; text-align: center; background: white;">
             <button onclick="toggleContinuous()">🎤 Continuous Listen (On/Off)</button>
         </div>
@@ -38,6 +38,7 @@
         const utterance = new SpeechSynthesisUtterance();
         let continuousRecognition = null;
         let isContinuousOn = false;
+        let isSpeaking = false;
 
         function addMessage(text, sender) {
             const msg = document.createElement('div');
@@ -53,15 +54,18 @@
         }
 
         function speak(text) {
+            isSpeaking = true;
             const cleanText = cleanForSpeech(text);
             utterance.text = cleanText;
             utterance.pitch = 1.35;
             utterance.rate = 1.05;
-            utterance.volume = 0.95;
+            utterance.onend = () => { isSpeaking = false; };
             speechSynthesis.speak(utterance);
         }
 
         async function sendMessage(userText = null) {
+            if (isSpeaking) return; // Prevent responding to its own voice
+
             const input = document.getElementById('userInput');
             const text = userText || input.value.trim();
             if (!text) return;
@@ -114,7 +118,7 @@
 
         function startContinuousListening() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return alert("Not supported in this browser.");
+            if (!SpeechRecognition) return alert("Not supported.");
 
             continuousRecognition = new SpeechRecognition();
             continuousRecognition.continuous = true;
@@ -122,27 +126,19 @@
             continuousRecognition.lang = "en-US";
 
             continuousRecognition.onresult = (event) => {
+                if (isSpeaking) return; // Ignore while Grok is talking
                 const spoken = event.results[event.results.length - 1][0].transcript.trim();
                 if (spoken.length > 3) {
                     sendMessage(spoken);
                 }
             };
 
-            continuousRecognition.onerror = (event) => {
-                console.log("Recognition error:", event.error);
-                if (isContinuousOn) {
-                    setTimeout(() => {
-                        if (isContinuousOn) startContinuousListening();
-                    }, 800);
-                }
+            continuousRecognition.onerror = () => {
+                if (isContinuousOn) setTimeout(startContinuousListening, 1000);
             };
 
             continuousRecognition.onend = () => {
-                if (isContinuousOn) {
-                    setTimeout(() => {
-                        if (isContinuousOn) startContinuousListening();
-                    }, 500);
-                }
+                if (isContinuousOn) setTimeout(startContinuousListening, 600);
             };
 
             continuousRecognition.start();
