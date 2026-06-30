@@ -45,7 +45,6 @@
             return msg;
         }
 
-        // Remove emojis before speaking
         function cleanForSpeech(text) {
             return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
         }
@@ -53,8 +52,20 @@
         function speak(text) {
             const cleanText = cleanForSpeech(text);
             utterance.text = cleanText;
-            utterance.pitch = 1.1;
-            utterance.rate = 0.95;
+            utterance.pitch = 1.05;      // Slightly higher pitch for friendly feel
+            utterance.rate = 0.92;       // Slightly slower for natural sound
+            utterance.volume = 0.95;
+
+            // Try to use a more natural female voice if available
+            const voices = speechSynthesis.getVoices();
+            const goodVoice = voices.find(voice => 
+                voice.name.includes("Samantha") || 
+                voice.name.includes("Karen") || 
+                voice.name.includes("Serena") || 
+                (voice.lang.includes("en") && voice.name.toLowerCase().includes("female"))
+            );
+            if (goodVoice) utterance.voice = goodVoice;
+
             speechSynthesis.speak(utterance);
         }
 
@@ -87,7 +98,7 @@
                 const reply = data.choices[0].message.content;
                 thinking.remove();
                 addMessage(reply, 'grok');
-                speak(reply);   // Speaks without emojis
+                speak(reply);
             } catch(e) {
                 thinking.remove();
                 const errMsg = "Oopsie! Try again 🐻";
@@ -111,6 +122,9 @@
             };
             recognition.start();
         }
+
+        // Load voices
+        speechSynthesis.onvoiceschanged = () => {};
     </script>
 </body>
 </html>
