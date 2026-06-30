@@ -20,10 +20,10 @@
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! Talk to me ✨</div>
+            <div class="message grok">Hi Bonnie! I'm listening! Talk to me anytime ✨</div>
         </div>
         <div style="padding: 20px; text-align: center; background: white;">
-            <button onclick="toggleContinuous()">🎤 Start Talking</button>
+            <button onclick="toggleContinuous()">🎤 Start Talking to Me</button>
         </div>
         <div class="status" id="status">Press button to start</div>
     </div>
@@ -34,6 +34,7 @@
         const utterance = new SpeechSynthesisUtterance();
         let continuousRecognition = null;
         let isContinuousOn = false;
+        let isSpeaking = false;
 
         function addMessage(text, sender) {
             const msg = document.createElement('div');
@@ -41,10 +42,25 @@
             msg.textContent = text;
             messagesDiv.appendChild(msg);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            return msg;
+        }
+
+        function cleanForSpeech(text) {
+            return text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+        }
+
+        function speak(text) {
+            isSpeaking = true;
+            const cleanText = cleanForSpeech(text);
+            utterance.text = cleanText;
+            utterance.pitch = 1.35;
+            utterance.rate = 0.78;   // Slower as requested
+            utterance.onend = () => { isSpeaking = false; };
+            speechSynthesis.speak(utterance);
         }
 
         async function sendMessage(userText) {
+            if (isSpeaking) return;
+
             addMessage(userText, 'user');
 
             const thinking = addMessage("Thinking... 🤔", 'grok');
@@ -52,26 +68,19 @@
             try {
                 const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json", 
-                        "Authorization": `Bearer ${GROQ_API_KEY}` 
-                    },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${GROQ_API_KEY}` },
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
                         messages: [
-                            { role: "system", content: "You are a fun friend for 5 year old Bonnie. Keep answers short and simple." },
+                            { role: "system", content: "You are a warm, playful friend for 5-year-old Bonnie. Use very simple words, be encouraging and fun. Keep answers short." },
                             { role: "user", content: userText }
                         ],
-                        temperature: 0.8,
-                        max_tokens: 200
+                        temperature: 0.9,
+                        max_tokens: 280
                     })
                 });
 
-                if (!res.ok) {
-                    const errorData = await res.text();
-                    console.error("Groq Error:", errorData);
-                    throw new Error("Status: " + res.status);
-                }
+                if (!res.ok) throw new Error("API Error");
 
                 const data = await res.json();
                 const reply = data.choices[0].message.content;
@@ -79,22 +88,45 @@
                 addMessage(reply, 'grok');
                 speak(reply);
             } catch(e) {
-                console.error("Full error:", e);
-                if (thinking && thinking.parentNode) thinking.remove();
-                addMessage("Error: " + e.message, 'grok');
+                thinking.remove();
+                const errMsg = "Oopsie! Try again 🐻";
+                addMessage(errMsg, 'grok');
+                speak(errMsg);
             }
         }
 
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.pitch = 1.3;
-            utterance.rate = 0.9;
-            speechSynthesis.speak(utterance);
+        function toggleContinuous() {
+            const status = document.getElementById('status');
+            if (isContinuousOn) {
+                if (continuousRecognition) continuousRecognition.stop();
+                isContinuousOn = false;
+                status.textContent = "Listening stopped";
+            } else {
+                startContinuousListening();
+                isContinuousOn = true;
+                status.textContent = "🎤 Listening... Talk anytime!";
+            }
         }
 
-        function toggleContinuous() {
-            const spoken = prompt("Say something to Bonnie's friend:");
-            if (spoken) sendMessage(spoken);
+        function startContinuousListening() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("Voice not supported. Try Chrome.");
+
+            continuousRecognition = new SpeechRecognition();
+            continuousRecognition.continuous = true;
+            continuousRecognition.interimResults = false;
+            continuousRecognition.lang = "en-US";
+
+            continuousRecognition.onresult = (event) => {
+                if (isSpeaking) return;
+                const spoken = event.results[event.results.length - 1][0].transcript.trim();
+                if (spoken.length > 3) sendMessage(spoken);
+            };
+
+            continuousRecognition.onerror = () => { if (isContinuousOn) setTimeout(startContinuousListening, 1000); };
+            continuousRecognition.onend = () => { if (isContinuousOn) setTimeout(startContinuousListening, 700); };
+
+            continuousRecognition.start();
         }
     </script>
 </body>
