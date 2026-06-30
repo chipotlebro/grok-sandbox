@@ -15,19 +15,20 @@
         input { width: 100%; padding: 18px; border: none; font-size: 1.2em; box-sizing: border-box; }
         button { padding: 15px 25px; background: #ff6b6b; color: white; border: none; font-size: 1.2em; cursor: pointer; border-radius: 10px; margin: 5px; }
         .kid-safe { text-align: center; color: #666; padding: 15px; font-size: 0.95em; }
+        .status { text-align: center; color: #4a90e2; font-weight: bold; padding: 5px; }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <div class="header">🌟 Bonnie's Grok Buddy 🌟</div>
         <div class="messages" id="messages">
-            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 What do you want to talk about today?</div>
+            <div class="message grok">Hi Bonnie! I'm your super fun Grok buddy 🦄 Talk to me anytime!</div>
         </div>
-        <input type="text" id="userInput" placeholder="Type or use the mic..." onkeypress="if(event.key === 'Enter') sendMessage()">
+        <input type="text" id="userInput" placeholder="Type here if you want..." onkeypress="if(event.key === 'Enter') sendMessage()">
         <div style="padding: 10px; text-align: center; background: white;">
-            <button onclick="sendMessage()">Send 🚀</button>
-            <button onclick="startVoiceInput()">🎤 Talk</button>
+            <button onclick="toggleContinuous()">🎤 Continuous Listen (On/Off)</button>
         </div>
+        <div class="status" id="status">Continuous listening is OFF</div>
         <div class="kid-safe">Made with love for Bonnie • Supervised by Daddy</div>
     </div>
 
@@ -35,6 +36,8 @@
         const GROQ_API_KEY = "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";
         const messagesDiv = document.getElementById('messages');
         const utterance = new SpeechSynthesisUtterance();
+        let continuousRecognition = null;
+        let isContinuousOn = false;
 
         function addMessage(text, sender) {
             const msg = document.createElement('div');
@@ -52,29 +55,19 @@
         function speak(text) {
             const cleanText = cleanForSpeech(text);
             utterance.text = cleanText;
-            utterance.pitch = 1.05;      // Slightly higher pitch for friendly feel
-            utterance.rate = 0.92;       // Slightly slower for natural sound
+            utterance.pitch = 1.35;      // Higher pitch = more kid-like
+            utterance.rate = 1.05;       // Slightly faster for energy
             utterance.volume = 0.95;
-
-            // Try to use a more natural female voice if available
-            const voices = speechSynthesis.getVoices();
-            const goodVoice = voices.find(voice => 
-                voice.name.includes("Samantha") || 
-                voice.name.includes("Karen") || 
-                voice.name.includes("Serena") || 
-                (voice.lang.includes("en") && voice.name.toLowerCase().includes("female"))
-            );
-            if (goodVoice) utterance.voice = goodVoice;
 
             speechSynthesis.speak(utterance);
         }
 
-        async function sendMessage() {
+        async function sendMessage(userText = null) {
             const input = document.getElementById('userInput');
-            const text = input.value.trim();
+            const text = userText || input.value.trim();
             if (!text) return;
 
-            addMessage(text, 'user');
+            if (!userText) addMessage(text, 'user');
             input.value = '';
 
             const thinking = addMessage("Thinking... 🤔", 'grok');
@@ -86,7 +79,7 @@
                     body: JSON.stringify({
                         model: "llama-3.1-8b-instant",
                         messages: [
-                            { role: "system", content: "You are a warm, playful, and safe best friend for 5-year-old Bonnie. Use very simple words, be encouraging and fun. Keep answers short." },
+                            { role: "system", content: "You are a warm, playful, and safe best friend for 5-year-old Bonnie. Use very simple words, lots of excitement, be encouraging and fun. Keep answers short." },
                             { role: "user", content: text }
                         ],
                         temperature: 0.9,
@@ -107,24 +100,46 @@
             }
         }
 
-        // Voice Input
-        function startVoiceInput() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Voice input not supported. Try Chrome!");
-                return;
+        // Continuous Voice Input
+        function toggleContinuous() {
+            const status = document.getElementById('status');
+            if (isContinuousOn) {
+                if (continuousRecognition) continuousRecognition.stop();
+                isContinuousOn = false;
+                status.textContent = "Continuous listening is OFF";
+            } else {
+                startContinuousListening();
+                isContinuousOn = true;
+                status.textContent = "🎤 Listening... Talk anytime!";
             }
-            const recognition = new SpeechRecognition();
-            recognition.onresult = (event) => {
-                const spoken = event.results[0][0].transcript;
-                document.getElementById('userInput').value = spoken;
-                sendMessage();
-            };
-            recognition.start();
         }
 
-        // Load voices
-        speechSynthesis.onvoiceschanged = () => {};
+        function startContinuousListening() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Continuous listening not supported in this browser.");
+                return;
+            }
+
+            continuousRecognition = new SpeechRecognition();
+            continuousRecognition.continuous = true;
+            continuousRecognition.interimResults = false;
+
+            continuousRecognition.onresult = (event) => {
+                const spoken = event.results[event.results.length - 1][0].transcript;
+                if (spoken.length > 3) {   // Ignore very short sounds
+                    sendMessage(spoken);
+                }
+            };
+
+            continuousRecognition.onerror = () => {
+                setTimeout(() => {
+                    if (isContinuousOn) startContinuousListening();
+                }, 1000);
+            };
+
+            continuousRecognition.start();
+        }
     </script>
 </body>
 </html>
